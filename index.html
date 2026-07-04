@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SynapseOS — Universal Multi-Agent Intelligence OS</title>
+<style>
+:root{
+  --canvas:#141414; --surface:#1c1c1c; --surface2:#232323; --raised:#2c2c2c;
+  --text:#ffffff; --text2:rgba(255,255,255,.64); --text3:rgba(255,255,255,.40);
+  --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.16);
+  --blue:#5E9FE8; --green:#72BC8F; --purple:#BF8EDA; --orange:#DE9255; --teal:#4FB9C9; --red:#E97366;
+  --accent:var(--blue); --accent-soft:rgba(94,159,232,.14);
+  --radius:12px; --radius-sm:8px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:'SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--canvas);color:var(--text);font-size:15px;line-height:1.5;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* Boot screen */
+#boot{position:fixed;inset:0;background:var(--canvas);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .6s ease}
+#boot.hide{opacity:0;pointer-events:none}
+.boot-logo{display:flex;align-items:center;gap:14px}
+.boot-mark{width:52px;height:52px}
+.boot-title{font-size:26px;font-weight:600;letter-spacing:-.02em}
+.boot-bar{width:220px;height:3px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.boot-bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--purple));animation:boot 1.6s ease forwards}
+@keyframes boot{to{width:100%}}
+.boot-status{font-size:13px;color:var(--text3);font-family:var(--mono)}
+
+/* App shell */
+#app{display:grid;grid-template-columns:248px 1fr;height:100vh;opacity:0;transition:opacity .5s ease}
+#app.show{opacity:1}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:18px 14px;gap:6px}
+.brand{display:flex;align-items:center;gap:11px;padding:6px 8px 16px}
+.brand-mark{width:32px;height:32px;flex-shrink:0}
+.brand-name{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--text3);font-weight:500}
+.nav-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);padding:12px 10px 6px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--radius-sm);color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;border:none;background:none;width:100%;text-align:left;transition:background .15s,color .15s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--text)}
+.nav-item.active .nav-ic{color:var(--accent)}
+.nav-ic{width:18px;height:18px;flex-shrink:0;color:var(--text3)}
+.sidebar-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+.active-domain{display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)}
+.ad-dot{width:9px;height:9px;border-radius:99px;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.ad-meta{display:flex;flex-direction:column;line-height:1.25}
+.ad-label{font-size:11px;color:var(--text3)}
+.ad-name{font-size:13px;font-weight:600}
+
+/* Main */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;flex-shrink:0;background:var(--surface)}
+.topbar h1{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.domain-switch{display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:99px;border:1px solid var(--border)}
+.dpill{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:99px;border:none;background:none;color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);transition:all .18s}
+.dpill:hover{color:var(--text)}
+.dpill.active{background:var(--raised);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.dpill .dp-dot{width:8px;height:8px;border-radius:99px}
+.view{flex:1;overflow-y:auto;padding:26px}
+.view::-webkit-scrollbar{width:10px}
+.view::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:99px;border:3px solid var(--canvas)}
+section.page{display:none;animation:fade .35s ease}
+section.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Generic */
+.grid{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.card .sub{font-size:13px;color:var(--text2);margin-bottom:16px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
+.hero{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);border-radius:16px;padding:34px 32px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero:after{content:'';position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:radial-gradient(circle,var(--accent-soft),transparent 70%);pointer-events:none}
+.hero h2{font-size:26px;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
+.hero p{font-size:15px;color:var(--text2);max-width:620px}
+.tag{font-size:15px;color:var(--accent);font-weight:600}
+
+/* Stat cards */
+.stats{grid-template-columns:repeat(4,1fr)}
+.stat .n{font-size:28px;font-weight:600;letter-spacing:-.02em}
+.stat .l{font-size:13px;color:var(--text2);margin-top:2px}
+.stat .d{font-size:12px;color:var(--green);margin-top:6px;font-weight:500}
+
+/* Domain grid */
+.domains{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.dcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:border-color .18s,transform .18s}
+.dcard:hover{border-color:var(--border2);transform:translateY(-2px)}
+.dcard.on{border-color:var(--accent);background:linear-gradient(160deg,var(--accent-soft),transparent)}
+.dcard .ic{font-size:26px;margin-bottom:12px}
+.dcard .nm{font-weight:600;font-size:15px}
+.dcard .ds{font-size:12.5px;color:var(--text2);margin-top:3px}
+.dcard .st{font-size:11px;margin-top:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;color:var(--text3)}
+.dcard.on .st{color:var(--green)}
+
+/* Engine core diagram */
+.core{display:flex;align-items:stretch;gap:14px;flex-wrap:wrap}
+.layer{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center;position:relative}
+.layer .ln{font-size:13px;font-weight:600}
+.layer .ls{font-size:11px;color:var(--text3);margin-top:3px}
+.layer .lic{font-size:20px;margin-bottom:8px}
+.flowarrow{display:flex;align-items:center;color:var(--text3);font-size:18px}
+
+/* Chat */
+.chat-wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;height:calc(100vh - 60px - 52px)}
+.chat-main{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.chat-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.chat-head .ttl{font-weight:600;font-size:14px;display:flex;align-items:center;gap:9px}
+.chat-head .ctx{font-size:12px;color:var(--text3)}
+.msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.msgs::-webkit-scrollbar{width:8px}.msgs::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:99px}
+.msg{display:flex;gap:12px;max-width:88%}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.avatar{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.avatar.ai{background:var(--accent-soft);color:var(--accent)}
+.avatar.me{background:var(--surface2);color:var(--text2)}
+.bubble{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 15px;font-size:14px}
+.msg.user .bubble{background:var(--accent-soft);border-color:transparent}
+.bubble p{margin-bottom:8px}.bubble p:last-child{margin-bottom:0}
+.bubble ul{margin:6px 0 6px 18px}.bubble li{margin-bottom:4px}
+.cites{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cite{font-size:11px;background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);display:inline-flex;align-items:center;gap:5px}
+.cite b{color:var(--accent);font-weight:600}
+
+/* Agent trace panel */
+.trace{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
+.trace-head{padding:14px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.trace-body{flex:1;overflow-y:auto;padding:16px}
+.astep{display:flex;gap:12px;padding-bottom:18px;position:relative}
+.astep:last-child{padding-bottom:0}
+.astep:not(:last-child):before{content:'';position:absolute;left:14px;top:30px;bottom:2px;width:2px;background:var(--border)}
+.astep .anode{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);font-size:14px;z-index:1;transition:all .3s}
+.astep.run .anode{border-color:var(--accent);color:var(--accent);animation:pulse 1s infinite}
+.astep.done .anode{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--accent-soft)}50%{box-shadow:0 0 0 6px transparent}}
+.astep .ainfo{flex:1;padding-top:3px}
+.astep .an{font-size:13px;font-weight:600}
+.astep .ao{font-size:12px;color:var(--text3);margin-top:2px}
+.astep.done .ao{color:var(--text2)}
+.astep .ao .tk{font-family:var(--mono);color:var(--text3);font-size:11px}
+
+/* Composer */
+.composer{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end}
+.composer textarea{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 13px;font-family:var(--font);font-size:14px;resize:none;height:44px;line-height:1.4;outline:none}
+.composer textarea:focus{border-color:var(--accent)}
+.send{background:var(--accent);color:#0b1a2b;border:none;border-radius:10px;width:44px;height:44px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.send:disabled{opacity:.4;cursor:default}
+.suggest{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px}
+.chip{font-size:12.5px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:6px 12px;color:var(--text2);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--accent);color:var(--text)}
+
+/* Knowledge graph */
+.graph-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;height:calc(100vh - 60px - 52px - 90px)}
+#kg{width:100%;height:100%;display:block}
+.kg-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.kg-legend .lg{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2)}
+.kg-legend .lg .sw{width:11px;height:11px;border-radius:99px}
+
+/* Documents / tables */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--border)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:14px;color:var(--text2)}
+.tbl td b{color:var(--text);font-weight:600}
+.tbl tr:last-child td{border-bottom:none}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px}
+.pill.ok{background:rgba(114,188,143,.14);color:var(--green)}
+.pill.sync{background:rgba(94,159,232,.14);color:var(--blue)}
+.pill.warn{background:rgba(222,146,85,.14);color:var(--orange)}
+.filetype{width:26px;height:26px;border-radius:6px;background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:13px;margin-right:2px}
+
+/* Agents cards */
+.agents{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.acard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.acard .top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.acard .ab{width:38px;height:38px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px}
+.acard .anm{font-weight:600;font-size:14px}
+.acard .arole{font-size:12px;color:var(--text3)}
+.acard .adesc{font-size:13px;color:var(--text2);margin-bottom:12px}
+.acard .atools{display:flex;flex-wrap:wrap;gap:6px}
+.mini{font-size:11px;background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;color:var(--text2)}
+
+/* Analytics bars */
+.bars{display:flex;align-items:flex-end;gap:12px;height:180px;padding-top:10px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+.bar .fill{width:100%;background:linear-gradient(180deg,var(--accent),var(--accent-soft));border-radius:6px 6px 0 0;transition:height .6s ease}
+.bar .bl{font-size:11px;color:var(--text3)}
+.section-title{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.section-sub{font-size:14px;color:var(--text2);margin-bottom:20px}
+.spacer{height:20px}
+@media(max-width:1000px){.chat-wrap{grid-template-columns:1fr}.trace{display:none}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-logo">
+    <svg class="boot-mark" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="5" fill="#5E9FE8"/><circle cx="9" cy="12" r="3.5" fill="#BF8EDA"/><circle cx="39" cy="12" r="3.5" fill="#72BC8F"/><circle cx="9" cy="36" r="3.5" fill="#DE9255"/><circle cx="39" cy="36" r="3.5" fill="#4FB9C9"/><g stroke="#5E9FE8" stroke-width="1.5" opacity=".5"><line x1="24" y1="24" x2="9" y2="12"/><line x1="24" y1="24" x2="39" y2="12"/><line x1="24" y1="24" x2="9" y2="36"/><line x1="24" y1="24" x2="39" y2="36"/></g></svg>
+    <div class="boot-title">Synapse<span style="color:#5E9FE8">OS</span></div>
+  </div>
+  <div class="boot-bar"><span></span></div>
+  <div class="boot-status" id="bootStatus">Loading intelligence kernel…</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="5" fill="#5E9FE8"/><circle cx="9" cy="12" r="3.5" fill="#BF8EDA"/><circle cx="39" cy="12" r="3.5" fill="#72BC8F"/><circle cx="9" cy="36" r="3.5" fill="#DE9255"/><circle cx="39" cy="36" r="3.5" fill="#4FB9C9"/><g stroke="#5E9FE8" stroke-width="1.5" opacity=".5"><line x1="24" y1="24" x2="9" y2="12"/><line x1="24" y1="24" x2="39" y2="12"/><line x1="24" y1="24" x2="9" y2="36"/><line x1="24" y1="24" x2="39" y2="36"/></g></svg>
+      <div><div class="brand-name">Synapse<span style="color:var(--blue)">OS</span></div><div class="brand-sub">Intelligence OS</div></div>
+    </div>
+    <button class="nav-item active" data-view="dashboard"><span class="nav-ic">▦</span>Dashboard</button>
+    <button class="nav-item" data-view="chat"><span class="nav-ic">◇</span>Chat</button>
+    <button class="nav-item" data-view="graph"><span class="nav-ic">⬡</span>Knowledge Graph</button>
+    <button class="nav-item" data-view="docs"><span class="nav-ic">▤</span>Documents</button>
+    <button class="nav-item" data-view="agents"><span class="nav-ic">◈</span>Agents</button>
+    <div class="nav-label">Platform</div>
+    <button class="nav-item" data-view="architecture"><span class="nav-ic">▥</span>Architecture</button>
+    <button class="nav-item" data-view="analytics"><span class="nav-ic">◧</span>Analytics</button>
+    <div class="sidebar-foot">
+      <div class="active-domain"><div class="ad-dot"></div><div class="ad-meta"><span class="ad-label">Active Domain</span><span class="ad-name" id="adName">Enterprise</span></div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="domain-switch" id="domainSwitch"></div>
+    </div>
+    <div class="view">
+
+      <!-- DASHBOARD -->
+      <section class="page active" id="view-dashboard">
+        <div class="hero">
+          <div class="eyebrow">Universal Multi-Agent Intelligence OS</div>
+          <h2>One Intelligence Platform. <span class="tag">Infinite Domain Brains.</span></h2>
+          <p>SynapseOS separates the reasoning engine from domain knowledge. Swap a <b>Knowledge Genome</b> and the same multi-agent core instantly becomes an expert in a new industry — no redesign, no restart.</p>
+        </div>
+        <div class="grid stats" style="margin-bottom:20px" id="statRow"></div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="eyebrow">The Constant Engine</div>
+          <h3>Same core for every domain</h3>
+          <div class="sub">Knowledge → Memory → Agents → Tools → Reasoning → Execution</div>
+          <div class="core" id="coreFlow"></div>
+        </div>
+        <div class="eyebrow">Domain Intelligence Packs</div>
+        <h3 style="margin-bottom:14px;font-size:16px">Click any pack to hot-swap the active domain</h3>
+        <div class="grid domains" id="domainGrid"></div>
+      </section>
+
+      <!-- CHAT -->
+      <section class="page" id="view-chat">
+        <div class="chat-wrap">
+          <div class="chat-main">
+            <div class="chat-head"><div class="ttl"><span id="chatDot" style="width:9px;height:9px;border-radius:99px;background:var(--accent);display:inline-block"></span><span id="chatDomain">Enterprise</span> Brain</div><div class="ctx" id="chatCtx"></div></div>
+            <div class="msgs" id="msgs"></div>
+            <div class="suggest" id="suggest"></div>
+            <div class="composer">
+              <textarea id="input" placeholder="Ask the active domain brain…" rows="1"></textarea>
+              <button class="send" id="send">↑</button>
+            </div>
+          </div>
+          <div class="trace">
+            <div class="trace-head">◈ Agent Orchestration</div>
+            <div class="trace-body" id="trace"><p style="font-size:13px;color:var(--text3)">Ask a question to watch the Planner delegate work across specialized agents in real time.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRAPH -->
+      <section class="page" id="view-graph">
+        <div class="section-title">Organizational Knowledge Graph</div>
+        <div class="section-sub">Live entity-relationship memory for the <b id="graphDomainName">Enterprise</b> pack. SynapseOS reasons over relationships, not isolated files.</div>
+        <div class="kg-legend" id="kgLegend"></div>
+        <div class="graph-wrap"><canvas id="kg"></canvas></div>
+      </section>
+
+      <!-- DOCS -->
+      <section class="page" id="view-docs">
+        <div class="section-title">Connected Knowledge Sources</div>
+        <div class="section-sub">Ingested into the <b id="docsDomainName">Enterprise</b> Knowledge Genome via connectors, chunked, embedded, and graphed.</div>
+        <div class="card" style="padding:0;overflow:hidden"><table class="tbl"><thead><tr><th>Source</th><th>Connector</th><th>Chunks</th><th>Status</th></tr></thead><tbody id="docsBody"></tbody></table></div>
+      </section>
+
+      <!-- AGENTS -->
+      <section class="page" id="view-agents">
+        <div class="section-title">Agent Runtime</div>
+        <div class="section-sub">Five specialized agents collaborate on every query. Domain packs extend them with expert sub-agents.</div>
+        <div class="grid agents" id="agentGrid"></div>
+      </section>
+
+      <!-- ARCHITECTURE -->
+      <section class="page" id="view-architecture">
+        <div class="section-title">System Architecture</div>
+        <div class="section-sub">Six interconnected layers. The domain knowledge layer is the only part that changes between deployments.</div>
+        <div id="archLayers"></div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="page" id="view-analytics">
+        <div class="section-title">Platform Analytics</div>
+        <div class="section-sub">Usage across the active <b id="anDomainName">Enterprise</b> deployment.</div>
+        <div class="grid stats" style="margin-bottom:20px" id="anStats"></div>
+        <div class="card"><h3>Queries this week</h3><div class="sub">Resolved by multi-agent orchestration</div><div class="bars" id="anBars"></div></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ DATA MODEL ============ */
+const DOMAINS={
+ enterprise:{name:'Enterprise',icon:'\uD83C\uDFE2',color:'#5E9FE8',soft:'rgba(94,159,232,.14)',desc:'Company knowledge & workflows',
+  stats:[['1,284','Documents','+112 this week'],['9','Connectors','all synced'],['47.2k','Graph edges','+3.1k'],['312ms','Avg latency','−18ms']],
+  ctx:'1,284 docs · 9 connectors · 47.2k graph edges',
+  suggest:['What is our leave policy?','Who owns the Apollo project?','Summarize last week\u2019s eng standup'],
+  docs:[['\uD83D\uDCC4','Company Handbook.pdf','PDF','842'],['\uD83D\uDCC4','HR Leave Policy.pdf','PDF','96'],['\uD83D\uDCDD','Q3 Product Roadmap','Notion','204'],['\uD83D\uDCDD','Eng Standup Notes','Notion','518'],['\uD83D\uDD12','Security Policy.pdf','PDF','133'],['\uD83D\uDCC1','Vendor Contracts','Drive','389']],
+  graph:{Employee:['Priya Nair','Marcus Lee'],Project:['Apollo','Helios'],Meeting:['Eng Standup'],Policy:['Leave Policy'],Document:['Handbook']},
+  answers:{
+   'What is our leave policy?':{txt:['Full-time employees receive <b>24 paid annual leave days</b>, accrued monthly, plus <b>12 sick days</b>. Leave requests route to your manager and must be filed at least <b>3 working days</b> in advance for planned time off.','Unused annual leave carries over up to a cap of <b>10 days</b> into the next calendar year.'],cites:[['HR Leave Policy.pdf','p.2'],['Company Handbook.pdf','\u00A74.1']]},
+   'Who owns the Apollo project?':{txt:['<b>Priya Nair</b> is the accountable owner of <b>Project Apollo</b>, with Marcus Lee as engineering lead. The graph links Apollo to the Q3 Roadmap and 3 active workstreams.'],cites:[['Q3 Product Roadmap','Apollo'],['Knowledge Graph','Employee\u2192Project']]},
+   'Summarize last week\u2019s eng standup':{txt:['Key points from the last Eng Standup:','<ul><li>Apollo API migration is <b>80% complete</b>; cutover targeted next Thursday.</li><li>Two P1 bugs closed; one open on auth refresh.</li><li>Hiring: 1 backend offer accepted.</li></ul>'],cites:[['Eng Standup Notes','2026-06-29']]}
+  }},
+ enterprise_default:1,
+ healthcare:{name:'Healthcare',icon:'\uD83C\uDFE5',color:'#72BC8F',soft:'rgba(114,188,143,.14)',desc:'Clinical protocols & decision support',
+  stats:[['3,910','Documents','+240 this week'],['6','Connectors','all synced'],['88.5k','Graph edges','+6.2k'],['298ms','Avg latency','−9ms']],
+  ctx:'3,910 docs · 6 connectors · 88.5k graph edges',
+  suggest:['What antibiotics are recommended for this protocol?','What is the sepsis escalation pathway?','Check drug interactions for warfarin'],
+  docs:[['\uD83D\uDCC4','Clinical Protocols 2026.pdf','PDF','1,204'],['\uD83D\uDCC4','Antibiotic Guidelines.pdf','PDF','312'],['\uD83D\uDCC4','Pharmacy Formulary.pdf','PDF','980'],['\uD83D\uDCDD','Patient Intake SOP','Notion','142'],['\uD83E\uDDEC','Biomedical Corpus','API','1,272']],
+  graph:{Patient:['Case #4821'],Protocol:['Sepsis Bundle','Post-Op'],Physician:['Dr. Rao'],Medication:['Piperacillin','Vancomycin'],Guideline:['IDSA 2026']},
+  answers:{
+   'What antibiotics are recommended for this protocol?':{txt:['For the <b>Sepsis Bundle (community-acquired)</b>, first-line empiric therapy is <b>Piperacillin-tazobactam 4.5g IV q6h</b>. Add <b>Vancomycin</b> if MRSA risk factors are present, dosed to a target trough of 15\u201320 mg/L.','De-escalate within 48\u201372h based on culture sensitivities.'],cites:[['Antibiotic Guidelines.pdf','\u00A73.2'],['IDSA 2026','Sepsis']]},
+   'What is the sepsis escalation pathway?':{txt:['Sepsis escalation follows the 1-hour bundle:','<ul><li>Measure lactate; obtain blood cultures before antibiotics.</li><li>Broad-spectrum antibiotics within <b>60 min</b>.</li><li>30 mL/kg crystalloid for hypotension or lactate \u22654.</li><li>Escalate to ICU if MAP &lt;65 after fluids.</li></ul>'],cites:[['Clinical Protocols 2026.pdf','Sepsis'],['IDSA 2026','Bundle']]},
+   'Check drug interactions for warfarin':{txt:['<b>Warfarin</b> has a major interaction with the recommended <b>Piperacillin-tazobactam</b> is low, but concurrent <b>fluconazole</b> or <b>metronidazole</b> significantly potentiates INR. Recommend INR monitoring every 48h during therapy.'],cites:[['Pharmacy Formulary.pdf','Interactions']]}
+  }},
+ education:{name:'Education',icon:'\uD83C\uDF93',color:'#BF8EDA',soft:'rgba(191,142,218,.14)',desc:'Curriculum & personalized learning',
+  stats:[['2,145','Documents','+87 this week'],['5','Connectors','all synced'],['61.0k','Graph edges','+2.4k'],['274ms','Avg latency','−12ms']],
+  ctx:'2,145 docs · 5 connectors · 61.0k graph edges',
+  suggest:['Generate my study plan','What are the exam rules?','Recommend electives for a data science track'],
+  docs:[['\uD83D\uDCDD','Curriculum 2026','Notion','604'],['\uD83D\uDCC4','Exam Policy.pdf','PDF','88'],['\uD83D\uDCDA','Course Catalog','API','1,120'],['\uD83D\uDCC4','Faculty Handbook.pdf','PDF','210'],['\uD83D\uDCC1','Lecture Materials','Drive','1,231']],
+  graph:{Student:['A. Sharma'],Course:['CS-301','MA-210'],Faculty:['Prof. Iyer'],Exam:['Midterm'],Syllabus:['DS Track']},
+  answers:{
+   'Generate my study plan':{txt:['Based on your <b>Data Science track</b> and midterm on 18 Jul, here is a 2-week plan:','<ul><li><b>Week 1:</b> CS-301 (Algorithms) \u2014 3 modules + 2 problem sets.</li><li><b>Week 2:</b> MA-210 (Statistics) \u2014 review + 3 past papers.</li><li>Daily: 45-min spaced-repetition on flagged weak topics.</li></ul>'],cites:[['Curriculum 2026','DS Track'],['Course Catalog','CS-301']]},
+   'What are the exam rules?':{txt:['Exams are <b>closed-book</b> unless stated otherwise. Students must arrive <b>15 minutes early</b>; entry is barred after 30 minutes. A minimum of <b>75% attendance</b> is required to sit final exams.'],cites:[['Exam Policy.pdf','\u00A72']]},
+   'Recommend electives for a data science track':{txt:['For a Data Science track, recommended electives are <b>CS-410 Machine Learning</b>, <b>CS-425 Data Visualization</b>, and <b>MA-330 Bayesian Methods</b> \u2014 all align with your completed prerequisites.'],cites:[['Course Catalog','Electives'],['Knowledge Graph','Student\u2192Course']]}
+  }},
+ manufacturing:{name:'Manufacturing',icon:'\uD83C\uDFED',color:'#DE9255',soft:'rgba(222,146,85,.14)',desc:'Operational & predictive intelligence',
+  stats:[['1,760','Documents','+64 this week'],['7','Connectors','all synced'],['52.8k','Graph edges','+1.9k'],['331ms','Avg latency','−7ms']],
+  ctx:'1,760 docs · 7 connectors · 52.8k graph edges',
+  suggest:['Predict maintenance for Line 3','What is the lockout/tagout procedure?','Which supplier delivers gearboxes fastest?'],
+  docs:[['\uD83D\uDCC8','Machine Maintenance Logs','API','1,010'],['\uD83D\uDCC4','Safety SOP.pdf','PDF','176'],['\uD83D\uDCDD','Production Schedule','Notion','233'],['\uD83D\uDCC1','Supplier Contracts','Drive','341']],
+  graph:{Machine:['Line 3','Press A'],Operator:['R. Das'],WorkOrder:['WO-772'],Supplier:['GearCo'],SOP:['Lockout']},
+  answers:{
+   'Predict maintenance for Line 3':{txt:['<b>Line 3</b> shows a rising vibration trend (+14% over 30 days) on bearing #2. Predicted failure window is <b>9\u201314 days</b>. Recommend scheduling preventive replacement during Sunday downtime to avoid a ~6h unplanned stop.'],cites:[['Machine Maintenance Logs','Line 3'],['Knowledge Graph','Machine\u2192WorkOrder']]},
+   'What is the lockout/tagout procedure?':{txt:['Lockout/Tagout (LOTO):','<ul><li>Notify affected operators; shut down equipment normally.</li><li>Isolate <b>all energy sources</b> and apply personal locks + tags.</li><li>Verify zero energy state before service.</li><li>Only the applying worker may remove their lock.</li></ul>'],cites:[['Safety SOP.pdf','\u00A75 LOTO']]},
+   'Which supplier delivers gearboxes fastest?':{txt:['<b>GearCo</b> has the shortest average lead time for gearboxes at <b>11 days</b> (vs. 19 days alt), with 98.2% on-time delivery over the last 12 months.'],cites:[['Supplier Contracts','GearCo'],['Machine Maintenance Logs','Parts']]}
+  }},
+ research:{name:'Research',icon:'\uD83D\uDD2C',color:'#4FB9C9',soft:'rgba(79,185,201,.14)',desc:'Scientific literature & discovery',
+  stats:[['12,430','Documents','+520 this week'],['4','Connectors','all synced'],['141k','Graph edges','+11k'],['356ms','Avg latency','−4ms']],
+  ctx:'12,430 docs · 4 connectors · 141k graph edges',
+  suggest:['Summarize recent findings on protein folding','Find papers related to my grant','What datasets support this hypothesis?'],
+  docs:[['\uD83D\uDCDA','Paper Corpus','API','9,880'],['\uD83D\uDCC4','Grant Proposals.pdf','PDF','412'],['\uD83D\uDCDD','Lab Notebooks','Notion','1,340'],['\uD83D\uDCCA','Datasets Index','Drive','798']],
+  graph:{Researcher:['Dr. Chen'],Paper:['Fold-Net','AlphaSeq'],Dataset:['PDB-2026'],Grant:['NSF-118'],Experiment:['Exp-42']},
+  answers:{
+   'Summarize recent findings on protein folding':{txt:['Recent corpus highlights:','<ul><li><b>Fold-Net (2026)</b> improves side-chain accuracy by 12% over prior diffusion models.</li><li>Cross-attention on MSA features remains the strongest signal.</li><li>Open challenge: disordered-region prediction still lags (RMSD &gt;4\u00C5).</li></ul>'],cites:[['Paper Corpus','Fold-Net'],['Paper Corpus','AlphaSeq']]},
+   'Find papers related to my grant':{txt:['For grant <b>NSF-118</b>, the graph surfaces <b>7 closely related papers</b>, with <b>Fold-Net</b> and <b>AlphaSeq</b> as the top citations. 3 share your co-author network.'],cites:[['Grant Proposals.pdf','NSF-118'],['Knowledge Graph','Grant\u2192Paper']]},
+   'What datasets support this hypothesis?':{txt:['The hypothesis is best supported by <b>PDB-2026</b> (structural) and the internal <b>Exp-42</b> assay results. Both are linked to Fold-Net in the knowledge graph.'],cites:[['Datasets Index','PDB-2026'],['Lab Notebooks','Exp-42']]}
+  }}
+};
+delete DOMAINS.enterprise_default;
+
+const AGENTS=[
+ {ic:'\uD83E\uDDED',nm:'Planner Agent',role:'Orchestrator',desc:'Decomposes the query into subtasks and decides which agents to invoke.',tools:['task-graph','routing','memory']},
+ {ic:'\uD83D\uDD0D',nm:'Retrieval Agent',role:'RAG',desc:'Semantic search over the vector database to fetch the most relevant chunks.',tools:['Qdrant','embeddings','rerank']},
+ {ic:'\u2B22',nm:'Knowledge Graph Agent',role:'Reasoning over relations',desc:'Traverses the Neo4j graph to resolve entities and relationships.',tools:['Neo4j','cypher','entity-link']},
+ {ic:'\uD83E\uDDE0',nm:'Reasoning Agent',role:'Synthesis',desc:'Combines retrieved context + graph facts into a grounded, cited answer.',tools:['Gemini','LangGraph','validator']},
+ {ic:'\u26A1',nm:'Action Agent',role:'Execution',desc:'Executes approved workflows across connected tools with policy checks.',tools:['Notion','Slack','Gmail','APIs']}
+];
+const STEPS=[
+ {ic:'\uD83E\uDDED',nm:'Planner Agent',out:'Decomposed into 3 subtasks \u00b7 routed to Retrieval + Graph'},
+ {ic:'\uD83D\uDD0D',nm:'Retrieval Agent',out:'Top-5 chunks from vector DB \u00b7 score 0.91'},
+ {ic:'\u2B22',nm:'Knowledge Graph Agent',out:'Resolved 4 entities \u00b7 2 relationships traversed'},
+ {ic:'\uD83E\uDDE0',nm:'Reasoning Agent',out:'Synthesized grounded answer with citations'},
+ {ic:'\u26A1',nm:'Action Agent',out:'No external action required \u00b7 policy OK'}
+];
+const ARCH=[
+ ['\uD83D\uDD0C','Connector Layer','Google Drive, Notion, Slack, Jira, GitHub, SharePoint, HIS, LMS, custom APIs \u2014 synced with permission awareness.'],
+ ['\u2699\uFE0F','Data Processing & Knowledge Construction','Clean \u2192 chunk \u2192 embed \u2192 extract entities, relationships & metadata into an evolving knowledge graph.'],
+ ['\uD83D\uDDC4\uFE0F','Knowledge Infrastructure','Vector DB (Qdrant) + Graph DB (Neo4j) + Metadata store (Postgres) = organizational memory.'],
+ ['\uD83E\uDD16','Multi-Agent Runtime','Planner, Retrieval, Graph, Reasoning & Action agents collaborate with shared memory and audit trails.'],
+ ['\u26A1','Workflow Execution','Approved decisions trigger actions across tools, each gated by policy validation & human approval.'],
+ ['\uD83D\uDDA5\uFE0F','Presentation Layer','Chat, dashboards, graph explorer, citation visualization, analytics & admin controls.']
+];
+const KGCOLORS={Employee:'#5E9FE8',Project:'#72BC8F',Meeting:'#DE9255',Policy:'#BF8EDA',Document:'#4FB9C9',Patient:'#5E9FE8',Protocol:'#72BC8F',Physician:'#DE9255',Medication:'#BF8EDA',Guideline:'#4FB9C9',Student:'#5E9FE8',Course:'#72BC8F',Faculty:'#DE9255',Exam:'#BF8EDA',Syllabus:'#4FB9C9',Machine:'#5E9FE8',Operator:'#72BC8F',WorkOrder:'#DE9255',Supplier:'#BF8EDA',SOP:'#4FB9C9',Researcher:'#5E9FE8',Paper:'#72BC8F',Dataset:'#DE9255',Grant:'#BF8EDA',Experiment:'#4FB9C9'};
+
+/* ============ STATE ============ */
+let current='enterprise';
+let busy=false;
+
+/* ============ INIT ============ */
+function setAccent(d){const D=DOMAINS[d];document.documentElement.style.setProperty('--accent',D.color);document.documentElement.style.setProperty('--accent-soft',D.soft);}
+
+function buildDomainSwitch(){const el=document.getElementById('domainSwitch');el.innerHTML='';Object.keys(DOMAINS).forEach(k=>{const D=DOMAINS[k];const b=document.createElement('button');b.className='dpill'+(k===current?' active':'');b.dataset.d=k;b.innerHTML=`<span class="dp-dot" style="background:${D.color}"></span>${D.name}`;b.onclick=()=>switchDomain(k);el.appendChild(b);});}
+
+function buildDashboard(){const D=DOMAINS[current];
+ const sr=document.getElementById('statRow');sr.innerHTML=D.stats.map(s=>`<div class="card stat"><div class="n">${s[0]}</div><div class="l">${s[1]}</div><div class="d">${s[2]}</div></div>`).join('');
+ const core=['\uD83D\uDCDA Knowledge','\uD83E\uDDE0 Memory','\uD83E\uDD16 Agents','\uD83D\uDD27 Tools','\uD83D\uDCA1 Reasoning','\u26A1 Execution'];
+ const cf=document.getElementById('coreFlow');cf.innerHTML='';core.forEach((c,i)=>{const parts=c.split(' ');const box=document.createElement('div');box.className='layer';box.innerHTML=`<div class="lic">${parts[0]}</div><div class="ln">${parts.slice(1).join(' ')}</div><div class="ls">shared core</div>`;cf.appendChild(box);if(i<core.length-1){const a=document.createElement('div');a.className='flowarrow';a.textContent='\u2192';cf.appendChild(a);}});
+ const dg=document.getElementById('domainGrid');dg.innerHTML=Object.keys(DOMAINS).map(k=>{const D2=DOMAINS[k];const on=k===current;return `<div class="dcard${on?' on':''}" data-d="${k}"><div class="ic">${D2.icon}</div><div class="nm">${D2.name}</div><div class="ds">${D2.desc}</div><div class="st">${on?'\u25CF Active domain':'\u25CB Tap to activate'}</div></div>`;}).join('');
+ dg.querySelectorAll('.dcard').forEach(c=>c.onclick=()=>switchDomain(c.dataset.d));
+}
+
+function buildChat(reset){const D=DOMAINS[current];
+ document.getElementById('chatDomain').textContent=D.name;
+ document.getElementById('chatDot').style.background=D.color;
+ document.getElementById('chatCtx').textContent=D.ctx;
+ const sg=document.getElementById('suggest');sg.innerHTML=D.suggest.map(q=>`<div class="chip">${q}</div>`).join('');
+ sg.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{if(!busy)ask(c.textContent);});
+ if(reset){document.getElementById('msgs').innerHTML=`<div class="msg"><div class="avatar ai">\u25C7</div><div class="bubble"><p>You\u2019re now talking to the <b>${D.name} Brain</b>. Same engine, freshly loaded with the ${D.name} Knowledge Genome. Ask me anything, or tap a suggestion below.</p></div></div>`;
+  document.getElementById('trace').innerHTML='<p style="font-size:13px;color:var(--text3)">Ask a question to watch the Planner delegate work across specialized agents in real time.</p>';}
+}
+
+function addMsg(role,html,cites){const m=document.getElementById('msgs');const d=document.createElement('div');d.className='msg '+role;const av=role==='user'?'<div class="avatar me">You</div>':'<div class="avatar ai">\u25C7</div>';let c='';if(cites&&cites.length)c=`<div class="cites">${cites.map(x=>`<span class="cite">\uD83D\uDCCE <b>${x[0]}</b> \u00b7 ${x[1]}</span>`).join('')}</div>`;d.innerHTML=av+`<div class="bubble">${html}${c}</div>`;m.appendChild(d);m.scrollTop=m.scrollHeight;return d;}
+
+function runTrace(cb){const t=document.getElementById('trace');t.innerHTML=STEPS.map((s,i)=>`<div class="astep" id="st${i}"><div class="anode">${s.ic}</div><div class="ainfo"><div class="an">${s.nm}</div><div class="ao" id="ao${i}">queued\u2026</div></div></div>`).join('');
+ let i=0;(function next(){if(i>=STEPS.length){cb();return;}const step=document.getElementById('st'+i);step.classList.add('run');document.getElementById('ao'+i).innerHTML='<span class="tk">running\u2026</span>';setTimeout(()=>{step.classList.remove('run');step.classList.add('done');document.getElementById('ao'+i).innerHTML=STEPS[i].out+` <span class="tk">\u00b7 ${180+Math.floor(Math.random()*260)}ms</span>`;i++;next();},520+Math.random()*260);})();}
+
+function ask(q){if(busy)return;busy=true;document.getElementById('send').disabled=true;
+ addMsg('user',`<p>${q}</p>`);document.getElementById('input').value='';
+ const D=DOMAINS[current];const ans=D.answers[q]||{txt:['Here\u2019s what the <b>'+D.name+'</b> brain found across '+D.docs.length+' connected sources. The Reasoning Agent grounded this answer in the retrieved passages and knowledge-graph relationships shown on the right.'],cites:[[D.docs[0][1],'match'],['Knowledge Graph','relations']]};
+ runTrace(()=>{addMsg('ai',ans.txt.map(p=>p.startsWith('<ul')?p:`<p>${p}</p>`).join(''),ans.cites);busy=false;document.getElementById('send').disabled=false;});
+}
+
+/* Knowledge graph canvas */
+let kgAnim;
+function buildGraph(){const D=DOMAINS[current];document.getElementById('graphDomainName').textContent=D.name;
+ const types=Object.keys(D.graph);
+ document.getElementById('kgLegend').innerHTML=types.map(t=>`<div class="lg"><span class="sw" style="background:${KGCOLORS[t]||'#5E9FE8'}"></span>${t}</div>`).join('');
+ const canvas=document.getElementById('kg');const wrap=canvas.parentElement;const dpr=window.devicePixelRatio||1;
+ function size(){canvas.width=wrap.clientWidth*dpr;canvas.height=wrap.clientHeight*dpr;canvas.style.width=wrap.clientWidth+'px';canvas.style.height=wrap.clientHeight+'px';}
+ size();const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+ const W=wrap.clientWidth,H=wrap.clientHeight;
+ // build nodes
+ let nodes=[];types.forEach((t,ti)=>{D.graph[t].forEach((label,li)=>{nodes.push({t,label,color:KGCOLORS[t]||'#5E9FE8'});});});
+ const cx=W/2,cy=H/2,R=Math.min(W,H)*0.32;
+ nodes.forEach((n,i)=>{const a=(i/nodes.length)*Math.PI*2 - Math.PI/2;n.x=cx+Math.cos(a)*R;n.y=cy+Math.sin(a)*R;n.a=a;});
+ // hub node
+ const hub={x:cx,y:cy,label:D.name,hub:true,color:D.color};
+ let edges=nodes.map(n=>[hub,n]);
+ // a few cross edges
+ for(let i=0;i<nodes.length;i++){if(i%2===0&&nodes[i+1])edges.push([nodes[i],nodes[i+1]]);}
+ let t0=performance.now();
+ cancelAnimationFrame(kgAnim);
+ function draw(now){const t=(now-t0)/1000;ctx.clearRect(0,0,W,H);
+  // edges
+  edges.forEach(e=>{ctx.beginPath();ctx.moveTo(e[0].x,e[0].y);ctx.lineTo(e[1].x,e[1].y);ctx.strokeStyle='rgba(255,255,255,.10)';ctx.lineWidth=1;ctx.stroke();
+   // pulse
+   const p=(t*0.4+ (e[1].a||0))%1;const px=e[0].x+(e[1].x-e[0].x)*p,py=e[0].y+(e[1].y-e[0].y)*p;ctx.beginPath();ctx.arc(px,py,2,0,7);ctx.fillStyle=e[1].color||D.color;ctx.globalAlpha=.7;ctx.fill();ctx.globalAlpha=1;});
+  // hub
+  const hr=34;ctx.beginPath();ctx.arc(hub.x,hub.y,hr,0,7);ctx.fillStyle=D.soft;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=D.color;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='600 12px -apple-system,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(D.name,hub.x,hub.y);
+  // nodes
+  nodes.forEach((n,i)=>{const bob=Math.sin(t*1.2+i)*2;const y=n.y+bob;ctx.beginPath();ctx.arc(n.x,y,9,0,7);ctx.fillStyle=n.color;ctx.fill();ctx.beginPath();ctx.arc(n.x,y,14,0,7);ctx.strokeStyle=n.color+'55';ctx.lineWidth=6;ctx.stroke();
+   ctx.fillStyle='rgba(255,255,255,.9)';ctx.font='500 11px -apple-system,sans-serif';const tw=ctx.measureText(n.label).width;const lx=n.x, ly=y+24;ctx.fillStyle='rgba(20,20,20,.85)';ctx.fillRect(lx-tw/2-5,ly-8,tw+10,16);ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillText(n.label,lx,ly);
+   ctx.fillStyle=n.color;ctx.font='600 9px -apple-system,sans-serif';ctx.fillText(n.t.toUpperCase(),n.x,y-22);});
+  kgAnim=requestAnimationFrame(draw);
+ }
+ kgAnim=requestAnimationFrame(draw);
+ window.onresize=()=>{if(document.getElementById('view-graph').classList.contains('active'))buildGraph();};
+}
+
+function buildDocs(){const D=DOMAINS[current];document.getElementById('docsDomainName').textContent=D.name;
+ const statuses=[['ok','\u25CF Indexed'],['sync','\u21BB Syncing'],['ok','\u25CF Indexed'],['ok','\u25CF Indexed'],['ok','\u25CF Indexed'],['warn','\u25CB Queued']];
+ document.getElementById('docsBody').innerHTML=D.docs.map((d,i)=>{const s=statuses[i%statuses.length];return `<tr><td><span class="filetype">${d[0]}</span> <b>${d[1]}</b></td><td>${d[2]}</td><td>${d[3]}</td><td><span class="pill ${s[0]}">${s[1]}</span></td></tr>`;}).join('');
+}
+
+function buildAgents(){document.getElementById('agentGrid').innerHTML=AGENTS.map(a=>`<div class="acard"><div class="top"><div class="ab">${a.ic}</div><div><div class="anm">${a.nm}</div><div class="arole">${a.role}</div></div></div><div class="adesc">${a.desc}</div><div class="atools">${a.tools.map(t=>`<span class="mini">${t}</span>`).join('')}</div></div>`).join('');}
+
+function buildArch(){document.getElementById('archLayers').innerHTML=ARCH.map((l,i)=>`<div class="card" style="margin-bottom:12px;display:flex;gap:16px;align-items:flex-start;${i===2?'border-color:var(--accent)':''}"><div style="width:44px;height:44px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${l[0]}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:10px"><h3 style="margin:0">${l[1]}</h3><span style="font-size:11px;color:var(--text3);font-family:var(--mono)">Layer ${i+1}</span></div><div class="sub" style="margin:4px 0 0">${l[2]}</div></div></div>`).join('');}
+
+function buildAnalytics(){const D=DOMAINS[current];document.getElementById('anDomainName').textContent=D.name;
+ document.getElementById('anStats').innerHTML=[['98.4%','Answer groundedness','+1.2%'],['4.7/5','User rating','+0.3'],[D.stats[3][0],'Avg latency',D.stats[3][2]],['0','Escalations','stable']].map(s=>`<div class="card stat"><div class="n">${s[0]}</div><div class="l">${s[1]}</div><div class="d">${s[2]}</div></div>`).join('');
+ const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];const seed=D.name.length;const vals=days.map((d,i)=>30+((seed*7+i*13)%70));
+ document.getElementById('anBars').innerHTML=vals.map((v,i)=>`<div class="bar"><div class="fill" style="height:${v}%"></div><div class="bl">${days[i]}</div></div>`).join('');
+}
+
+function rebuildActive(){const v=document.querySelector('.nav-item.active').dataset.view;render(v);}
+function render(v){
+ if(v==='dashboard')buildDashboard();
+ else if(v==='chat')buildChat(true);
+ else if(v==='graph')buildGraph();
+ else if(v==='docs')buildDocs();
+ else if(v==='agents')buildAgents();
+ else if(v==='architecture')buildArch();
+ else if(v==='analytics')buildAnalytics();
+}
+
+function switchDomain(k){if(k===current)return;current=k;setAccent(k);
+ document.getElementById('adName').textContent=DOMAINS[k].name;
+ buildDomainSwitch();
+ // flash effect
+ document.querySelectorAll('.dpill').forEach(p=>p.classList.toggle('active',p.dataset.d===k));
+ rebuildActive();
+}
+
+/* nav */
+document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ const v=b.dataset.view;document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('view-'+v).classList.add('active');
+ document.getElementById('pageTitle').textContent=b.textContent.trim();
+ if(v!=='graph')cancelAnimationFrame(kgAnim);
+ render(v);
+});
+
+/* composer */
+document.getElementById('send').onclick=()=>{const v=document.getElementById('input').value.trim();if(v)ask(v);};
+document.getElementById('input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const v=e.target.value.trim();if(v)ask(v);}});
+
+/* boot sequence */
+const bootMsgs=['Loading intelligence kernel\u2026','Mounting knowledge genomes\u2026','Spawning agent runtime\u2026','Connecting knowledge graph\u2026','Ready.'];
+let bi=0;const bs=document.getElementById('bootStatus');
+const bootInt=setInterval(()=>{bi++;if(bi<bootMsgs.length)bs.textContent=bootMsgs[bi];},330);
+setTimeout(()=>{clearInterval(bootInt);document.getElementById('boot').classList.add('hide');document.getElementById('app').classList.add('show');},1800);
+
+/* init */
+setAccent(current);buildDomainSwitch();buildDashboard();
+
+/* QA / deep-link hook */
+function goView(v){const b=document.querySelector('.nav-item[data-view="'+v+'"]');if(b)b.click();}
+if(window.__QA__){const q=window.__QA__;if(q.domain){switchDomain(q.domain);}if(q.skipBoot){clearInterval(bootInt);document.getElementById('boot').classList.add('hide');document.getElementById('app').classList.add('show');}if(q.view){setTimeout(()=>{goView(q.view);if(q.ask)setTimeout(()=>ask(q.ask),120);},q.skipBoot?60:1900);}}
+</script>
+</body>
+</html>
